@@ -120,7 +120,7 @@ namespace Inedo.Extensions.DFHack.Operations
             {
                 var gitCacheDir = (await context.ExpandVariablesAsync("$DFHackGitCache")).AsString();
 
-                makeStartInfo.Arguments = $"run --rm -i -v {EscapeLinuxArg($"{executionBaseDir}:{executionBaseDir}")} -v {EscapeLinuxArg($"{gitCacheDir}:{gitCacheDir}:ro")}{(this.UseCCache ? "-v \"$HOME/.ccache:$HOME/.ccache\" -e CCACHE_DIR=\"$HOME/.ccache\"" : string.Empty)} -u $(id -u):$(id -g) -w {EscapeLinuxArg(context.WorkingDirectory)} benlubar/macgcc {makeStartInfo.FileName} {makeStartInfo.Arguments}";
+                makeStartInfo.Arguments = $"run --rm -i -v {EscapeLinuxArg($"{executionBaseDir}:{executionBaseDir}")} -v {EscapeLinuxArg($"{gitCacheDir}:{gitCacheDir}:ro")}{(this.UseCCache ? " -v \"$HOME/.ccache:$HOME/.ccache\" -e CCACHE_DIR=\"$HOME/.ccache\"" : string.Empty)} -u $(id -u):$(id -g) -w {EscapeLinuxArg(context.WorkingDirectory)} benlubar/macgcc {makeStartInfo.FileName} {makeStartInfo.Arguments}";
                 makeStartInfo.FileName = "/usr/bin/docker";
 
                 this.LogDebug($"Adjusted command for Mac build: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
