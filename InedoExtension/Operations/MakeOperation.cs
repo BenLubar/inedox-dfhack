@@ -106,8 +106,8 @@ namespace Inedo.Extensions.DFHack.Operations
             {
                 this.LogDebug($"Using ccache base directory: {executionBaseDir}");
 
-                makeStartInfo.FileName = "/usr/bin/env";
                 makeStartInfo.Arguments = $"CCACHE_BASEDIR={EscapeLinuxArg(executionBaseDir)} CCACHE_SLOPPINESS={EscapeLinuxArg("file_macro")} make {makeStartInfo.Arguments}";
+                makeStartInfo.FileName = "/usr/bin/env";
                 if (!this.MacBuild)
                 {
                     makeStartInfo.Arguments = $"PATH=\"/usr/lib/ccache:$PATH\" {makeStartInfo.Arguments}";
@@ -120,8 +120,8 @@ namespace Inedo.Extensions.DFHack.Operations
             {
                 var gitCacheDir = (await context.ExpandVariablesAsync("$DFHackGitCache")).AsString();
 
-                makeStartInfo.FileName = "/usr/bin/docker";
                 makeStartInfo.Arguments = $"run --rm -i -v {EscapeLinuxArg($"{executionBaseDir}:{executionBaseDir}")} -v {EscapeLinuxArg($"{gitCacheDir}:{gitCacheDir}:ro")}{(this.UseCCache ? "-v \"$HOME/.ccache:$HOME/.ccache\" -e CCACHE_DIR=\"$HOME/.ccache\"" : string.Empty)} -u $(id -u):$(id -g) -w {EscapeLinuxArg(context.WorkingDirectory)} benlubar/macgcc {makeStartInfo.FileName} {makeStartInfo.Arguments}";
+                makeStartInfo.FileName = "/usr/bin/docker";
 
                 this.LogDebug($"Adjusted command for Mac build: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
             }
