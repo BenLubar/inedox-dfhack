@@ -21,10 +21,6 @@ namespace Inedo.Extensions.DFHack.Operations
         [ScriptAlias("Targets")]
         public IEnumerable<string> Targets { get; set; }
 
-        [DisplayName("Use ccache")]
-        [ScriptAlias("UseCCache")]
-        public bool UseCCache { get; set; }
-
         [DisplayName("Parallelism")]
         [ScriptAlias("Parallelism")]
         [PlaceholderText("[use all available processors]")]
@@ -89,39 +85,18 @@ namespace Inedo.Extensions.DFHack.Operations
 
             var makeStartInfo = new RemoteProcessStartInfo
             {
-                FileName = "/usr/bin/make",
+                FileName = "make",
                 WorkingDirectory = context.WorkingDirectory,
-                Arguments = $"-j{processorCount} -- {string.Join(" ", this.Targets.Select(EscapeLinuxArg))}"
+                Arguments = $"-j{processorCount} -- {string.Join(" ", this.Targets.Select(Utils.EscapeLinuxArg))}"
             };
 
             this.LogInformation($"Running make with arguments: {makeStartInfo.Arguments}");
 
-            var fileOps = await context.Agent.GetServiceAsync<IFileOperationsExecuter>();
-            var baseDir = await fileOps.GetBaseWorkingDirectoryAsync();
-
-            // XXX: assumes standardized execution directory layout and no deployables
-            var executionBaseDir = fileOps.CombinePath(baseDir, $"_E{context.ExecutionId}", "_D0");
-
-            if (this.UseCCache)
-            {
-                this.LogDebug($"Using ccache base directory: {executionBaseDir}");
-
-                makeStartInfo.Arguments = $"CCACHE_BASEDIR={EscapeLinuxArg(executionBaseDir)} CCACHE_SLOPPINESS={EscapeLinuxArg("file_macro")} make {makeStartInfo.Arguments}";
-                makeStartInfo.FileName = "/usr/bin/env";
-                if (!this.MacBuild)
-                {
-                    makeStartInfo.Arguments = $"PATH=\"/usr/lib/ccache:$PATH\" {makeStartInfo.Arguments}";
-                }
-
-                this.LogDebug($"Adjusted command for ccache: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
-            }
+            this.LogDebug($"Adjusted command for ccache: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
 
             if (this.MacBuild)
             {
-                var gitCacheDir = (await context.ExpandVariablesAsync("$DFHackGitCache")).AsString();
-
-                makeStartInfo.Arguments = $"run --rm -i -v {EscapeLinuxArg($"{executionBaseDir}:{executionBaseDir}")} -v {EscapeLinuxArg($"{gitCacheDir}:{gitCacheDir}:ro")}{(this.UseCCache ? " -v \"$HOME/.ccache:$HOME/.ccache\" -e CCACHE_DIR=\"$HOME/.ccache\"" : string.Empty)} -u $(id -u):$(id -g) -w {EscapeLinuxArg(context.WorkingDirectory)} benlubar/macgcc {makeStartInfo.FileName} {makeStartInfo.Arguments}";
-                makeStartInfo.FileName = "/usr/bin/docker";
+                await makeStartInfo.WrapInMacGCCAsync(context);
 
                 this.LogDebug($"Adjusted command for Mac build: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
             }
@@ -210,16 +185,6 @@ namespace Inedo.Extensions.DFHack.Operations
             }
         }
 
-        private static string EscapeLinuxArg(string arg)
-        {
-            if (arg.Length > 0 && arg.All(c => char.IsLetterOrDigit(c) || c == '/' || c == '-' || c == '_' || c == '.'))
-            {
-                return arg;
-            }
-
-            return "'" + arg.Replace("'", "'\\''") + "'";
-        }
-
         protected override ExtendedRichDescription GetDescription(IOperationConfiguration config)
         {
             var details = new RichDescription();
@@ -230,10 +195,6 @@ namespace Inedo.Extensions.DFHack.Operations
             else
             {
                 details.AppendContent("for Linux ");
-            }
-            if (string.Equals(config[nameof(UseCCache)], "true", StringComparison.OrdinalIgnoreCase))
-            {
-                details.AppendContent("using ccache ");
             }
             if (!string.IsNullOrEmpty(config[nameof(Parallelism)]))
             {
