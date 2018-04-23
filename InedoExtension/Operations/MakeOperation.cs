@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Threading.Tasks;
 using Inedo.Agents;
 using Inedo.Diagnostics;
@@ -15,20 +14,12 @@ namespace Inedo.Extensions.DFHack.Operations
     [Description("Equivalent to running the \"make\" command, but with better progress reporting.")]
     [ScriptNamespace("DFHack", PreferUnqualified = false)]
     [ScriptAlias("Make")]
-    public sealed class MakeOperation : ExecuteOperation
+    [AppliesTo(InedoProduct.BuildMaster)]
+    public sealed class MakeOperation : BuildEnvOperationBase
     {
-        [DisplayName("Targets")]
-        [ScriptAlias("Targets")]
-        public IEnumerable<string> Targets { get; set; }
-
-        [DisplayName("Parallelism")]
-        [ScriptAlias("Parallelism")]
-        [PlaceholderText("[use all available processors]")]
-        public int? Parallelism { get; set; }
-
-        [DisplayName("Mac Build")]
-        [ScriptAlias("MacBuild")]
-        public bool MacBuild { get; set; }
+        [DisplayName("Target")]
+        [ScriptAlias("Target")]
+        public string Target { get; set; }
 
         private volatile OperationProgress progress = null;
         public override OperationProgress GetProgress() => this.progress;
@@ -36,70 +27,15 @@ namespace Inedo.Extensions.DFHack.Operations
         public override async Task ExecuteAsync(IOperationExecutionContext context)
         {
             var execOps = await context.Agent.GetServiceAsync<IRemoteProcessExecuter>();
-            int? processorCount = this.Parallelism;
-            if (!processorCount.HasValue)
-            {
-                this.LogDebug("Using nproc to determine available processor count...");
-
-                try
-                {
-                    using (var nproc = execOps.CreateProcess(new RemoteProcessStartInfo
-                    {
-                        FileName = "/usr/bin/nproc"
-                    }))
-                    {
-                        nproc.OutputDataReceived += (s, e) =>
-                        {
-                            if (!string.IsNullOrWhiteSpace(e.Data))
-                            {
-                                processorCount = processorCount ?? AH.ParseInt(e.Data);
-                            }
-                        };
-
-                        nproc.ErrorDataReceived += (s, e) =>
-                        {
-                            if (!string.IsNullOrWhiteSpace(e.Data))
-                            {
-                                this.LogWarning(e.Data);
-                            }
-                        };
-
-                        nproc.Start();
-
-                        await nproc.WaitAsync(context.CancellationToken);
-                    }
-                }
-                catch
-                {
-                }
-
-                if (!processorCount.HasValue)
-                {
-                    this.LogWarning("Unable to determine processor count!");
-                    processorCount = 1;
-                }
-            }
-
-            this.LogDebug($"Using {processorCount} parallel jobs.");
-            this.LogDebug($"Running in directory: {context.WorkingDirectory}");
 
             var makeStartInfo = new RemoteProcessStartInfo
             {
-                FileName = "make",
-                WorkingDirectory = context.WorkingDirectory,
-                Arguments = $"-j{processorCount} -- {string.Join(" ", this.Targets.Select(Utils.EscapeLinuxArg))}"
+                FileName = "dfhack-make",
+                Arguments = this.Target.EscapeLinuxArg(),
+                WorkingDirectory = context.WorkingDirectory
             };
 
-            this.LogInformation($"Running make with arguments: {makeStartInfo.Arguments}");
-
-            this.LogDebug($"Adjusted command for ccache: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
-
-            if (this.MacBuild)
-            {
-                await makeStartInfo.WrapInMacGCCAsync(context);
-
-                this.LogDebug($"Adjusted command for Mac build: {makeStartInfo.FileName} {makeStartInfo.Arguments}");
-            }
+            await this.LogAndWrapCommandAsync(context, makeStartInfo);
 
             using (var make = execOps.CreateProcess(makeStartInfo))
             {
@@ -187,27 +123,8 @@ namespace Inedo.Extensions.DFHack.Operations
 
         protected override ExtendedRichDescription GetDescription(IOperationConfiguration config)
         {
-            var details = new RichDescription();
-            if (string.Equals(config[nameof(MacBuild)], "true", StringComparison.OrdinalIgnoreCase))
-            {
-                details.AppendContent("for Mac OS X ");
-            }
-            else
-            {
-                details.AppendContent("for Linux ");
-            }
-            if (!string.IsNullOrEmpty(config[nameof(Parallelism)]))
-            {
-                details.AppendContent("with up to ", new Hilite(config[nameof(Parallelism)]), " parallel jobs");
-            }
-            else
-            {
-                details.AppendContent("on all available processor cores");
-            }
-
             return new ExtendedRichDescription(
-                new RichDescription("Make ", new ListHilite(config[nameof(Targets)].AsEnumerable())),
-                details
+                new RichDescription("Make ", new Hilite(config[nameof(Target)]))
             );
         }
     }

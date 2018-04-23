@@ -1,5 +1,6 @@
 ﻿using Inedo.Agents;
 using Inedo.Extensibility.Operations;
+using Inedo.Extensions.DFHack.VariableFunctions;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -64,21 +65,23 @@ namespace Inedo.Extensions.DFHack
             return fileOps.CombinePath(baseDir, $"_E{context.ExecutionId}", "_D0");
         }
 
-        public static async Task AddCCacheAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context)
+        public static async Task WrapInBuildEnvAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context, string imageName, bool shareCache, params string[] additionalPaths)
         {
+            var fileOps = await context.Agent.GetServiceAsync<IFileOperationsExecuter>();
             var executionBaseDir = await context.GetExecutionBaseDirAsync();
 
-            info.Arguments = $"PATH=\"/usr/lib/ccache:$PATH\" CCACHE_BASEDIR={Utils.EscapeLinuxArg(executionBaseDir)} CCACHE_SLOPPINESS={Utils.EscapeLinuxArg("file_macro,include_file_ctime,include_file_mtime")} {info.FileName} {info.Arguments}";
-            info.FileName = "/usr/bin/env";
-        }
+            var volumes = string.Join(" ",
+                new[] { executionBaseDir }.Concat(additionalPaths)
+                .Select(s => fileOps.CombinePath(info.WorkingDirectory, s))
+                .Select(s => "-v " + $"{s}:{s}".EscapeLinuxArg())
+                .Concat(new[]
+                {
+                    string.Format("{0}:{0}:ro", (await DFHackCacheVariableFunction.GetAsync(context))).EscapeLinuxArg(),
+                    shareCache ? "-v \"$HOME/.ccache:$HOME/.ccache\"" : $"-v {fileOps.CombinePath(executionBaseDir, ".ccache").EscapeLinuxArg()}\":$HOME/.ccache\""
+                })
+            );
 
-        public static async Task WrapInMacGCCAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context)
-        {
-            var executionBaseDir = await context.GetExecutionBaseDirAsync();
-            var gitCacheDir = (await context.ExpandVariablesAsync("$DFHackGitCache")).AsString();
-
-            info.Arguments = info.Arguments.Replace("PATH=\"/usr/lib/ccache:$PATH\" ", "");
-            info.Arguments = $"run --rm -i -v {Utils.EscapeLinuxArg($"{executionBaseDir}:{executionBaseDir}")} -v {Utils.EscapeLinuxArg($"{gitCacheDir}:{gitCacheDir}:ro")} -v \"$HOME/.ccache:$HOME/.ccache\" -e CCACHE_DIR=\"$HOME/.ccache\" -u $(id -u):$(id -g) -w {Utils.EscapeLinuxArg(context.WorkingDirectory)} benlubar/macgcc {info.FileName} {info.Arguments}";
+            info.Arguments = $"run --rm -e CCACHE_BASEDIR={executionBaseDir.EscapeLinuxArg()} {volumes} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"$HOME/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
             info.FileName = "/usr/bin/docker";
         }
     }

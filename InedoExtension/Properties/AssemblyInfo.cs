@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using Inedo.Extensibility;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("DFHack")]
@@ -10,3 +11,5 @@ using System.Runtime.InteropServices;
 
 [assembly: AssemblyVersion("0.1.0.0")]
 [assembly: AssemblyFileVersion("0.1.0.0")]
+
+[assembly: ExtensionIcon("https://avatars0.githubusercontent.com/u/5777323")]

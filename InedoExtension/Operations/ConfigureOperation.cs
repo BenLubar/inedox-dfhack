@@ -1,12 +1,12 @@
-﻿using Inedo.Agents;
+﻿using System;
+using System.ComponentModel;
+using System.Threading.Tasks;
+using Inedo.Agents;
 using Inedo.Diagnostics;
 using Inedo.Documentation;
 using Inedo.Extensibility;
 using Inedo.Extensibility.Operations;
 using Inedo.IO;
-using System;
-using System.ComponentModel;
-using System.Threading.Tasks;
 
 namespace Inedo.Extensions.DFHack.Operations
 {
@@ -14,13 +14,12 @@ namespace Inedo.Extensions.DFHack.Operations
     [Description("Prepares a build of DFHack to be used with the DFHack::Make operation.")]
     [ScriptNamespace("DFHack", PreferUnqualified = false)]
     [ScriptAlias("Configure")]
-    public sealed class ConfigureOperation : ExecuteOperation
+    [AppliesTo(InedoProduct.BuildMaster)]
+    public sealed class ConfigureOperation : BuildEnvOperationBase
     {
         public enum BuildArchitecture
         {
-            [Description("32-bit")]
             i386,
-            [Description("64-bit")]
             x86_64
         }
 
@@ -28,16 +27,13 @@ namespace Inedo.Extensions.DFHack.Operations
         {
             Windows,
             Linux,
-            [Description("Linux (gcc 4.8)")]
-            Linux48,
             MacOSX
         }
 
         public enum BuildTypeName
         {
             Release,
-            RelWithDebInfo,
-            MacOSXNative
+            RelWithDebInfo
         }
 
         [Required]
@@ -67,16 +63,11 @@ namespace Inedo.Extensions.DFHack.Operations
         [ScriptAlias("InstallPrefix")]
         public string InstallPrefix { get; set; }
 
-        [Category("Directories")]
-        [DisplayName("Native directory")]
-        [ScriptAlias("NativeDirectory")]
-        public string NativeDirectory { get; set; }
-
         [Category("Included components")]
         [DisplayName("Official plugins")]
         [ScriptAlias("IncludeSupported")]
         [DefaultValue(true)]
-        public bool IncludeSupported { get; set; }
+        public bool IncludeSupported { get; set; } = true;
 
         [Category("Included components")]
         [DisplayName("Documentation")]
@@ -104,58 +95,39 @@ namespace Inedo.Extensions.DFHack.Operations
                 .End();
 
             var escapeArg = this.OperatingSystem == BuildOperatingSystem.Windows ? (Func<string, string>)Utils.EscapeWindowsArg : Utils.EscapeLinuxArg;
-            var cmakeStartInfo = new RemoteProcessStartInfo
-            {
-                FileName = "cmake",
-                Arguments = $"{escapeArg(this.SourcePath)} -DDFHACK_BUILD_ARCH={bits} -DCMAKE_INSTALL_PREFIX={escapeArg(this.InstallPrefix)}",
-                WorkingDirectory = context.WorkingDirectory
-            };
+            RemoteProcessStartInfo cmakeStartInfo;
 
-            if (this.BuildType == BuildTypeName.MacOSXNative)
+            if (this.OperatingSystem == BuildOperatingSystem.Windows)
             {
-                if (this.OperatingSystem != BuildOperatingSystem.MacOSX || this.Architecture != BuildArchitecture.x86_64 || !string.IsNullOrEmpty(this.NativeDirectory))
+                cmakeStartInfo = new RemoteProcessStartInfo
                 {
-                    throw new InvalidOperationException("MacOSXNative build type is only allowed for 64-bit MacOSX and NativeDirectory must not be specified.");
-                }
-
-                cmakeStartInfo.Arguments += " -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++ -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc";
+                    FileName = @"C:\ProgramData\Chocolatey\bin\cmake.exe",
+                    Arguments = $"{this.SourcePath.EscapeWindowsArg()} -DDFHACK_BUILD_ARCH={bits} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeWindowsArg()} -DCMAKE_BUILD_TYPE={this.BuildType}" + (bits == 32 ? " -G\"Visual Studio 14\"" : " -G\"Visual Studio 14 Win64\" -T v140_xp"),
+                    WorkingDirectory = context.WorkingDirectory
+                };
             }
             else
             {
-                cmakeStartInfo.Arguments += $" -DCMAKE_BUILD_TYPE={this.BuildType} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
-
-                if (this.OperatingSystem == BuildOperatingSystem.Windows)
+                cmakeStartInfo = new RemoteProcessStartInfo
                 {
-                    cmakeStartInfo.FileName = @"C:\ProgramData\Chocolatey\bin\cmake.exe";
-                    cmakeStartInfo.Arguments += bits == 32 ? " -G\"Visual Studio 14\"" : " -G\"Visual Studio 14 Win64\" -T v140_xp";
-                }
-                else if (this.OperatingSystem == BuildOperatingSystem.Linux48)
-                {
-                    cmakeStartInfo.Arguments += " -DCMAKE_C_COMPILER=gcc-4.8 -DCMAKE_CXX_COMPILER=g++-4.8";
-                }
-                else if (this.OperatingSystem == BuildOperatingSystem.MacOSX)
-                {
-                    cmakeStartInfo.Arguments += $" -DCMAKE_SYSTEM_NAME=Darwin -DDFHACK_NATIVE_BUILD_DIR={escapeArg(this.NativeDirectory)} -DCMAKE_CXX_COMPILER=/usr/lib/ccache/x86_64-apple-darwin14-g++ -DCMAKE_C_COMPILER=/usr/lib/ccache/x86_64-apple-darwin14-gcc -DCMAKE_FIND_ROOT_PATH=/osxcross/target/macports/pkgs/opt/local -DCMAKE_OSX_SYSROOT=/osxcross/target/SDK/MacOSX10.10.sdk";
-                }
+                    FileName = "dfhack-configure",
+                    Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType}",
+                    WorkingDirectory = context.WorkingDirectory
+                };
             }
+
+            cmakeStartInfo.Arguments += $" -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
 
             await fileOps.CreateDirectoryAsync(context.WorkingDirectory);
 
-            this.LogDebug($"Running in directory: {context.WorkingDirectory}");
-            this.LogDebug($"Running cmake with arguments: {cmakeStartInfo.Arguments}");
-
             if (this.OperatingSystem != BuildOperatingSystem.Windows)
             {
-                await cmakeStartInfo.AddCCacheAsync(context);
-
-                this.LogDebug($"Adjusted command for ccache: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
-
-                if (this.OperatingSystem == BuildOperatingSystem.MacOSX)
-                {
-                    await cmakeStartInfo.WrapInMacGCCAsync(context);
-
-                    this.LogDebug($"Adjusted command for Mac build: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
-                }
+                await this.LogAndWrapCommandAsync(context, cmakeStartInfo);
+            }
+            else
+            {
+                this.LogDebug($"Running in directory: {cmakeStartInfo.WorkingDirectory}");
+                this.LogDebug($"Executing command: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
             }
 
             using (var cmake = execOps.CreateProcess(cmakeStartInfo))
@@ -239,12 +211,8 @@ namespace Inedo.Extensions.DFHack.Operations
         {
             bool validOS = Enum.TryParse(config[nameof(OperatingSystem)], out BuildOperatingSystem os);
             bool validArch = Enum.TryParse(config[nameof(Architecture)], out BuildArchitecture arch);
+            bool validGCC = Enum.TryParse(config[nameof(GCC)], out BuildGCC gcc);
             bool validType = Enum.TryParse(config[nameof(BuildType)], out BuildTypeName type);
-
-            if (validType && type == BuildTypeName.MacOSXNative)
-            {
-                return new ExtendedRichDescription(new RichDescription("Configure native build tools for a Mac OS X DFHack build"));
-            }
 
             var description = new ExtendedRichDescription(new RichDescription("Configure DFHack"), new RichDescription());
 
@@ -274,13 +242,11 @@ namespace Inedo.Extensions.DFHack.Operations
                     AH.Switch<BuildOperatingSystem, string>(os)
                     .Case(BuildOperatingSystem.Windows, "Windows")
                     .Case(BuildOperatingSystem.Linux, "Linux")
-                    .Case(BuildOperatingSystem.Linux48, "Linux")
                     .Case(BuildOperatingSystem.MacOSX, "Mac OS X")
                     .End()
-                ), AH.Switch<BuildOperatingSystem, string>(os)
-                .Case(BuildOperatingSystem.Linux, " (latest GCC)")
-                .Case(BuildOperatingSystem.Linux48, " (gcc 4.8)")
-                .Default("")
+                ), os == BuildOperatingSystem.Windows ? null : AH.Switch<BuildGCC, string>(validGCC ? gcc : BuildGCC.Latest)
+                .Case(BuildGCC.Latest, " (latest GCC)")
+                .Case(BuildGCC.GCC48, " (gcc 4.8)")
                 .End());
             }
 
@@ -288,6 +254,7 @@ namespace Inedo.Extensions.DFHack.Operations
             if (string.Equals(config[nameof(IncludeSupported)], "false", StringComparison.OrdinalIgnoreCase))
             {
                 description.LongDescription.AppendContent(" without ", new Hilite("official plugins"));
+                with = ", with ";
             }
             if (string.Equals(config[nameof(IncludeDocumentation)], "true", StringComparison.OrdinalIgnoreCase))
             {
