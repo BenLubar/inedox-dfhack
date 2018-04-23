@@ -76,7 +76,7 @@ namespace Inedo.Extensions.DFHack
                 .Select(s => "-v " + $"{s}:{s}".EscapeLinuxArg())
                 .Concat(new[]
                 {
-                    string.Format("{0}:{0}:ro", (await DFHackCacheVariableFunction.GetAsync(context))).EscapeLinuxArg(),
+                    "-v " + string.Format("{0}:{0}:ro", (await DFHackCacheVariableFunction.GetAsync(context))).EscapeLinuxArg(),
                     shareCache ? "-v \"$HOME/.ccache:$HOME/.ccache\"" : $"-v {fileOps.CombinePath(executionBaseDir, ".ccache").EscapeLinuxArg()}\":$HOME/.ccache\""
                 })
             );
