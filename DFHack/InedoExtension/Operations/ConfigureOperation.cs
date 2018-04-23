@@ -102,7 +102,7 @@ namespace Inedo.Extensions.DFHack.Operations
                 cmakeStartInfo = new RemoteProcessStartInfo
                 {
                     FileName = @"C:\ProgramData\Chocolatey\bin\cmake.exe",
-                    Arguments = $"{this.SourcePath.EscapeWindowsArg()} -DDFHACK_BUILD_ARCH={bits} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeWindowsArg()} -DCMAKE_BUILD_TYPE={this.BuildType}" + (bits == 32 ? " -G\"Visual Studio 14\"" : " -G\"Visual Studio 14 Win64\" -T v140_xp"),
+                    Arguments = $"-DDFHACK_BUILD_ARCH={bits} -DCMAKE_BUILD_TYPE={this.BuildType}" + (bits == 32 ? " -G\"Visual Studio 14\"" : " -G\"Visual Studio 14 Win64\" -T v140_xp"),
                     WorkingDirectory = context.WorkingDirectory
                 };
             }
@@ -116,7 +116,7 @@ namespace Inedo.Extensions.DFHack.Operations
                 };
             }
 
-            cmakeStartInfo.Arguments += $" -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
+            cmakeStartInfo.Arguments += $" {escapeArg(this.SourcePath)} -DCMAKE_INSTALL_PREFIX={escapeArg(this.InstallPrefix)} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
 
             await fileOps.CreateDirectoryAsync(context.WorkingDirectory);
 
