@@ -23,13 +23,6 @@ namespace Inedo.Extensions.DFHack.Operations
             x86_64
         }
 
-        public enum BuildOperatingSystem
-        {
-            Windows,
-            Linux,
-            MacOSX
-        }
-
         public enum BuildTypeName
         {
             Release,
@@ -87,48 +80,26 @@ namespace Inedo.Extensions.DFHack.Operations
         public override async Task ExecuteAsync(IOperationExecutionContext context)
         {
             var execOps = await context.Agent.GetServiceAsync<IRemoteProcessExecuter>();
-            var fileOps = await context.Agent.GetServiceAsync<IFileOperationsExecuter>();
+            var fileOps = await context.Agent.GetServiceAsync<ILinuxFileOperationsExecuter>();
 
             var bits = AH.Switch<BuildArchitecture, int>(this.Architecture)
                 .Case(BuildArchitecture.i386, 32)
                 .Case(BuildArchitecture.x86_64, 64)
                 .End();
 
-            var escapeArg = this.OperatingSystem == BuildOperatingSystem.Windows ? (Func<string, string>)Utils.EscapeWindowsArg : Utils.EscapeLinuxArg;
-            RemoteProcessStartInfo cmakeStartInfo;
-
-            if (this.OperatingSystem == BuildOperatingSystem.Windows)
+            var cmakeStartInfo = new RemoteProcessStartInfo
             {
-                cmakeStartInfo = new RemoteProcessStartInfo
-                {
-                    FileName = @"C:\ProgramData\Chocolatey\bin\cmake.exe",
-                    Arguments = $"-DDFHACK_BUILD_ARCH={bits} -DCMAKE_BUILD_TYPE={this.BuildType}" + (bits == 32 ? " -G\"Visual Studio 14\"" : " -G\"Visual Studio 14 Win64\" -T v140_xp"),
-                    WorkingDirectory = context.WorkingDirectory
-                };
-            }
-            else
-            {
-                cmakeStartInfo = new RemoteProcessStartInfo
-                {
-                    FileName = "dfhack-configure",
-                    Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType}",
-                    WorkingDirectory = context.WorkingDirectory
-                };
-            }
+                FileName = "dfhack-configure",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType}",
+                WorkingDirectory = context.WorkingDirectory
+            };
 
-            cmakeStartInfo.Arguments += $" {escapeArg(this.SourcePath)} -DCMAKE_INSTALL_PREFIX={escapeArg(this.InstallPrefix)} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
+            cmakeStartInfo.Arguments += $" {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
 
             await fileOps.CreateDirectoryAsync(context.WorkingDirectory);
 
-            if (this.OperatingSystem != BuildOperatingSystem.Windows)
-            {
-                await this.LogAndWrapCommandAsync(context, cmakeStartInfo);
-            }
-            else
-            {
-                this.LogDebug($"Running in directory: {cmakeStartInfo.WorkingDirectory}");
-                this.LogDebug($"Executing command: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
-            }
+            this.LogDebug($"Running in directory: {cmakeStartInfo.WorkingDirectory}");
+            this.LogDebug($"Executing command: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
 
             using (var cmake = execOps.CreateProcess(cmakeStartInfo))
             {
@@ -182,36 +153,12 @@ namespace Inedo.Extensions.DFHack.Operations
                     this.LogError("cmake exited with unknown code");
                 }
             }
-
-            if (this.OperatingSystem == BuildOperatingSystem.Windows)
-            {
-                var projects = await fileOps.GetFileSystemInfosAsync(context.WorkingDirectory, new MaskingContext(new[] { "**/*.vcxproj" }, new string[0]));
-
-                if (projects.Count != 0)
-                {
-                    int i = 0;
-                    this.progress = new OperationProgress(0, "replacing PDB types in Visual C++ projects");
-
-                    foreach (var project in projects)
-                    {
-                        context.CancellationToken.ThrowIfCancellationRequested();
-
-                        var text = await fileOps.ReadAllTextAsync(project.FullName);
-                        text = text.Replace("<DebugInformationFormat>ProgramDatabase</DebugInformationFormat>", "<DebugInformationFormat>OldStyle</DebugInformationFormat>");
-                        await fileOps.WriteAllTextAsync(project.FullName, text);
-
-                        i++;
-                        this.progress = new OperationProgress(i / projects.Count, "replacing PDB types in Visual C++ projects");
-                    }
-                }
-            }
         }
 
         protected override ExtendedRichDescription GetDescription(IOperationConfiguration config)
         {
             bool validOS = Enum.TryParse(config[nameof(OperatingSystem)], out BuildOperatingSystem os);
             bool validArch = Enum.TryParse(config[nameof(Architecture)], out BuildArchitecture arch);
-            bool validGCC = Enum.TryParse(config[nameof(GCC)], out BuildGCC gcc);
             bool validType = Enum.TryParse(config[nameof(BuildType)], out BuildTypeName type);
 
             var description = new ExtendedRichDescription(new RichDescription("Configure DFHack"), new RichDescription());
@@ -244,10 +191,11 @@ namespace Inedo.Extensions.DFHack.Operations
                     .Case(BuildOperatingSystem.Linux, "Linux")
                     .Case(BuildOperatingSystem.MacOSX, "Mac OS X")
                     .End()
-                ), os == BuildOperatingSystem.Windows ? null : AH.Switch<BuildGCC, string>(validGCC ? gcc : BuildGCC.Latest)
-                .Case(BuildGCC.Latest, " (latest GCC)")
-                .Case(BuildGCC.GCC48, " (gcc 4.8)")
-                .End());
+                ), AH.Switch<string, string>(config[nameof(ImageTag)])
+                    .Case("latest", " (latest GCC)")
+                    .Case("gcc-4.8", " (GCC 4.8)")
+                    .Default((string)null)
+                    .End());
             }
 
             var with = " with ";

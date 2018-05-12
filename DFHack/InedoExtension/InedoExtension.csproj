@@ -63,6 +63,7 @@
     <Compile Include="Operations\ConfigureOperation.cs" />
     <Compile Include="Operations\MakeOperation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SuggestionProviders\BuildEnvImageSuggestionProvider.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="VariableFunctions\DFHackBuildEnvVariableFunction.cs" />
     <Compile Include="VariableFunctions\DFHackCacheVariableFunction.cs" />

@@ -13,3 +13,4 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("0.1.0.0")]
 
 [assembly: ExtensionIcon("https://avatars0.githubusercontent.com/u/5777323")]
+[assembly: AppliesTo(InedoProduct.BuildMaster)]

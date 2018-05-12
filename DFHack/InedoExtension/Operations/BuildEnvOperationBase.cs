@@ -2,18 +2,22 @@
 using System.Threading.Tasks;
 using Inedo.Agents;
 using Inedo.Diagnostics;
+using Inedo.Documentation;
 using Inedo.Extensibility;
 using Inedo.Extensibility.Operations;
+using Inedo.Extensions.DFHack.SuggestionProviders;
 using Inedo.Extensions.DFHack.VariableFunctions;
+using Inedo.Web;
 
 namespace Inedo.Extensions.DFHack.Operations
 {
     public abstract class BuildEnvOperationBase : ExecuteOperation
     {
-        public enum BuildGCC
+        public enum BuildOperatingSystem
         {
-            Latest,
-            GCC48
+            Windows,
+            Linux,
+            MacOSX
         }
 
         [DisplayName("Build-env image")]
@@ -21,10 +25,11 @@ namespace Inedo.Extensions.DFHack.Operations
         [DefaultValue("$" + DFHackBuildEnvVariableFunction.Name)]
         public string BuildEnv { get; set; } = "$" + DFHackBuildEnvVariableFunction.Name;
 
-        [DisplayName("GCC version")]
-        [ScriptAlias("GCC")]
-        [DefaultValue(BuildGCC.Latest)]
-        public BuildGCC GCC { get; set; } = BuildGCC.Latest;
+        [Required]
+        [DisplayName("Image tag")]
+        [ScriptAlias("Image")]
+        [SuggestableValue(typeof(BuildEnvImageSuggestionProvider))]
+        public string ImageTag { get; set; }
 
         [DisplayName("Build is trusted")]
         [ScriptAlias("Trusted")]
@@ -37,7 +42,7 @@ namespace Inedo.Extensions.DFHack.Operations
             this.LogDebug($"Running in directory: {info.WorkingDirectory}");
             this.LogDebug($"Executing command: {info.FileName} {info.Arguments}");
 
-            await info.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + AH.Switch<BuildGCC, string>(this.GCC).Case(BuildGCC.Latest, "latest").Case(BuildGCC.GCC48, "gcc-4.8").End(), this.TrustedBuild);
+            await info.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild);
             this.LogDebug($"Full build-env command line: {info.FileName} {info.Arguments}");
         }
     }
