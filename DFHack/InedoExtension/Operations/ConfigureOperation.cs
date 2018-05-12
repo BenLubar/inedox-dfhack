@@ -87,16 +87,16 @@ namespace Inedo.Extensions.DFHack.Operations
                 .Case(BuildArchitecture.x86_64, 64)
                 .End();
 
+            await fileOps.CreateDirectoryAsync(context.WorkingDirectory);
+
             var cmakeStartInfo = new RemoteProcessStartInfo
             {
                 FileName = "dfhack-configure",
-                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType}",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType} {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}",
                 WorkingDirectory = context.WorkingDirectory
             };
 
-            cmakeStartInfo.Arguments += $" {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}";
-
-            await fileOps.CreateDirectoryAsync(context.WorkingDirectory);
+            await cmakeStartInfo.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild);
 
             this.LogDebug($"Running in directory: {cmakeStartInfo.WorkingDirectory}");
             this.LogDebug($"Executing command: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
