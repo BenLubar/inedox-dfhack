@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Inedo.Agents;
 using Inedo.Diagnostics;
@@ -81,25 +82,45 @@ namespace Inedo.Extensions.DFHack.Operations
                         this.progress = new OperationProgress(percentage ?? this.progress.Percent, string.Join(", ", activeTargets));
                     }
 
+                    string text = e.Data;
+                    if (this.ImageTag == "msvc")
+                    {
+                        text = e.Data.TrimEnd();
+                        if ((!targetsChanged || !percentage.HasValue) && e.Data != text && new[] { ".c", ".cc", ".cpp" }.Any(ext => text.EndsWith(ext)))
+                        {
+                            return;
+                        }
+                    }
+
                     if (targetsChanged && percentage.HasValue)
                     {
-                        this.LogInformation(e.Data);
+                        this.LogInformation(text);
                     }
                     else
                     {
-                        this.LogDebug(e.Data);
+                        this.LogDebug(text);
                     }
                 };
 
                 make.ErrorDataReceived += (s, e) =>
                 {
-                    if (e.Data.Contains(": error: "))
+                    string text = e.Data;
+                    if (this.ImageTag == "msvc")
                     {
-                        this.LogError(e.Data);
+                        text = e.Data.TrimEnd();
+                        if (text.StartsWith("cl : Command line warning D9025 : overriding '/O"))
+                        {
+                            return;
+                        }
+                    }
+
+                    if (text.Contains(this.ImageTag == "msvc" ? " error C" : ": error: "))
+                    {
+                        this.LogError(text);
                     }
                     else
                     {
-                        this.LogWarning(e.Data);
+                        this.LogWarning(text);
                     }
                 };
 
