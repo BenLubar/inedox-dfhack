@@ -111,6 +111,14 @@ namespace Inedo.Extensions.DFHack.Operations
                 bool isError = false;
                 cmake.ErrorDataReceived += (s, e) =>
                 {
+                    if (this.ImageTag == "msvc")
+                    {
+                        if (e.Data.TrimEnd() == @"wine: cannot find L""C:\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\mscorsvw.exe""")
+                        {
+                            return;
+                        }
+                    }
+
                     if (e.Data.StartsWith("* "))
                     {
                         this.LogDebug(e.Data);
