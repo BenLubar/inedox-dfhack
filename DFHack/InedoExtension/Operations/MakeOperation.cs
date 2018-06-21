@@ -90,6 +90,10 @@ namespace Inedo.Extensions.DFHack.Operations
                         {
                             return;
                         }
+                        if (text == @"wine: cannot find L""C:\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\mscorsvw.exe""")
+                        {
+                            return;
+                        }
                     }
 
                     if (targetsChanged && percentage.HasValue)
