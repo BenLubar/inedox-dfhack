@@ -1,8 +1,8 @@
-﻿using Inedo.Extensibility;
+﻿using System.Threading.Tasks;
+using Inedo.Extensibility;
 using Inedo.Extensibility.Operations;
 using Inedo.Extensibility.VariableFunctions;
 using Inedo.IO;
-using System.Threading.Tasks;
 
 namespace Inedo.Extensions.DFHack.VariableFunctions
 {

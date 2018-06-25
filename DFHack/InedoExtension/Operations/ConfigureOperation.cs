@@ -6,7 +6,6 @@ using Inedo.Diagnostics;
 using Inedo.Documentation;
 using Inedo.Extensibility;
 using Inedo.Extensibility.Operations;
-using Inedo.IO;
 
 namespace Inedo.Extensions.DFHack.Operations
 {
@@ -17,12 +16,6 @@ namespace Inedo.Extensions.DFHack.Operations
     [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class ConfigureOperation : BuildEnvOperationBase
     {
-        public enum BuildArchitecture
-        {
-            i386,
-            x86_64
-        }
-
         public enum BuildTypeName
         {
             Release,
@@ -48,7 +41,7 @@ namespace Inedo.Extensions.DFHack.Operations
         [DisplayName("Source path")]
         [ScriptAlias("SourcePath")]
         [DefaultValue("../src")]
-        public string SourcePath { get; set; }
+        public string SourcePath { get; set; } = "../src";
 
         [Required]
         [Category("Directories")]

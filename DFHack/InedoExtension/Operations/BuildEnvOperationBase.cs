@@ -20,6 +20,12 @@ namespace Inedo.Extensions.DFHack.Operations
             MacOSX
         }
 
+        public enum BuildArchitecture
+        {
+            i386,
+            x86_64
+        }
+
         [DisplayName("Build-env image")]
         [ScriptAlias("BuildEnv")]
         [DefaultValue("$" + DFHackBuildEnvVariableFunction.Name)]
@@ -37,12 +43,12 @@ namespace Inedo.Extensions.DFHack.Operations
         [DefaultValue(true)]
         public bool TrustedBuild { get; set; } = true;
 
-        protected async Task LogAndWrapCommandAsync(IOperationExecutionContext context, RemoteProcessStartInfo info)
+        protected async Task LogAndWrapCommandAsync(IOperationExecutionContext context, RemoteProcessStartInfo info, bool allowNetwork = true, bool forceASLR = true)
         {
             this.LogDebug($"Running in directory: {info.WorkingDirectory}");
             this.LogDebug($"Executing command: {info.FileName} {info.Arguments}");
 
-            await info.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild);
+            await info.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild, allowNetwork, forceASLR);
             this.LogDebug($"Full build-env command line: {info.FileName} {info.Arguments}");
         }
     }
