@@ -31,11 +31,6 @@ namespace Inedo.Extensions.DFHack.Operations
         [PlaceholderText("eg. test/main")]
         public string Command { get; set; }
 
-        [DisplayName("Source path")]
-        [ScriptAlias("SourcePath")]
-        [DefaultValue("../src")]
-        public string SourcePath { get; set; } = "../src";
-
         public override async Task ExecuteAsync(IOperationExecutionContext context)
         {
             var execOps = await context.Agent.GetServiceAsync<IRemoteProcessExecuter>();
@@ -48,7 +43,7 @@ namespace Inedo.Extensions.DFHack.Operations
             var testStartInfo = new RemoteProcessStartInfo
             {
                 FileName = "dfhack-test",
-                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.SourcePath.EscapeLinuxArg()} {this.Command.EscapeLinuxArg()}",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.Command.EscapeLinuxArg()}",
                 WorkingDirectory = context.WorkingDirectory
             };
 
