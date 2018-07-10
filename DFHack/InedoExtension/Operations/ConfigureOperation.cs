@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Inedo.Agents;
 using Inedo.Diagnostics;
@@ -36,6 +38,10 @@ namespace Inedo.Extensions.DFHack.Operations
         [DisplayName("Build type")]
         [ScriptAlias("BuildType")]
         public BuildTypeName BuildType { get; set; }
+
+        [DisplayName("Additional arguments")]
+        [ScriptAlias("AdditionalArgs")]
+        public IEnumerable<string> AdditionalArgs { get; set; }
 
         [Category("Directories")]
         [DisplayName("Source path")]
@@ -85,7 +91,7 @@ namespace Inedo.Extensions.DFHack.Operations
             var cmakeStartInfo = new RemoteProcessStartInfo
             {
                 FileName = "dfhack-configure",
-                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType} {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType} {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}{this.AdditionalArgs.Select(a => " " + a.EscapeLinuxArg())}",
                 WorkingDirectory = context.WorkingDirectory
             };
 
