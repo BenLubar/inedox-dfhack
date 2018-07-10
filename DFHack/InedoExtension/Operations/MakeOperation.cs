@@ -100,6 +100,14 @@ namespace Inedo.Extensions.DFHack.Operations
                     {
                         this.LogInformation(text);
                     }
+                    else if (text.Contains(this.ImageTag == "msvc" ? " error C" : ": error: "))
+                    {
+                        this.LogError(text);
+                    }
+                    else if (text.Contains(this.ImageTag == "msvc" ? " warning C" : ": warning: "))
+                    {
+                        this.LogWarning(text);
+                    }
                     else
                     {
                         this.LogDebug(text);
