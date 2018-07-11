@@ -91,7 +91,7 @@ namespace Inedo.Extensions.DFHack.Operations
             var cmakeStartInfo = new RemoteProcessStartInfo
             {
                 FileName = "dfhack-configure",
-                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType} {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}{this.AdditionalArgs.Select(a => " " + a.EscapeLinuxArg())}",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.BuildType} {this.SourcePath.EscapeLinuxArg()} -DCMAKE_INSTALL_PREFIX={this.InstallPrefix.EscapeLinuxArg()} -DBUILD_SUPPORTED={(this.IncludeSupported ? 1 : 0)} -DBUILD_DEVEL=0 -DBUILD_DEV_PLUGINS=0 -DBUILD_DOCS={(this.IncludeDocumentation ? 1 : 0)} -DBUILD_STONESENSE={(this.IncludeStonesense ? 1 : 0)}{string.Join("", this.AdditionalArgs.Select(a => " " + a.EscapeLinuxArg()))}",
                 WorkingDirectory = context.WorkingDirectory
             };
 
