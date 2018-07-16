@@ -13,9 +13,7 @@ namespace Inedo.Extensions.DFHack.Operations
 {
     [DisplayName("[DFHack] Configure with CMake")]
     [Description("Prepares a build of DFHack to be used with the DFHack::Make operation.")]
-    [ScriptNamespace("DFHack", PreferUnqualified = false)]
     [ScriptAlias("Configure")]
-    [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class ConfigureOperation : BuildEnvOperationBase
     {
         public enum BuildTypeName
@@ -42,6 +40,10 @@ namespace Inedo.Extensions.DFHack.Operations
         [DisplayName("Additional arguments")]
         [ScriptAlias("AdditionalArgs")]
         public IEnumerable<string> AdditionalArgs { get; set; }
+
+        [DisplayName("Use Ninja instead of Make")]
+        [ScriptAlias("UseNinja")]
+        public bool UseNinja { get; set; }
 
         [Category("Directories")]
         [DisplayName("Source path")]
@@ -95,6 +97,11 @@ namespace Inedo.Extensions.DFHack.Operations
                 WorkingDirectory = context.WorkingDirectory
             };
 
+            if (this.UseNinja)
+            {
+                cmakeStartInfo.EnvironmentVariables["DFHACK_USE_NINJA"] = "1";
+            }
+
             await cmakeStartInfo.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild);
 
             this.LogDebug($"Running in directory: {cmakeStartInfo.WorkingDirectory}");
@@ -110,17 +117,15 @@ namespace Inedo.Extensions.DFHack.Operations
                 bool isError = false;
                 cmake.ErrorDataReceived += (s, e) =>
                 {
-                    if (this.ImageTag == "msvc")
+                    var line = this.RemoveLogRubbish(e);
+                    if (line == null)
                     {
-                        if (e.Data.TrimEnd() == @"wine: cannot find L""C:\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\mscorsvw.exe""")
-                        {
-                            return;
-                        }
+                        return;
                     }
 
-                    if (e.Data.StartsWith("* "))
+                    if (line.StartsWith("* "))
                     {
-                        this.LogDebug(e.Data);
+                        this.LogDebug(line);
                         isError = false;
                         return;
                     }
@@ -129,18 +134,18 @@ namespace Inedo.Extensions.DFHack.Operations
                     {
                         isError = true;
                     }
-                    else if (string.IsNullOrWhiteSpace(e.Data))
+                    else if (string.IsNullOrWhiteSpace(line))
                     {
                         isError = false;
                     }
 
                     if (isError)
                     {
-                        this.LogError(e.Data);
+                        this.LogError(line);
                     }
                     else
                     {
-                        this.LogWarning(e.Data);
+                        this.LogWarning(line);
                     }
                 };
 

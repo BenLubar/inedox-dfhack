@@ -10,9 +10,7 @@ namespace Inedo.Extensions.DFHack.Operations
 {
     [DisplayName("[DFHack] Run Tests")]
     [Description("Runs DFHack test cases.")]
-    [ScriptNamespace("DFHack", PreferUnqualified = false)]
     [ScriptAlias("Test")]
-    [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class TestOperation : BuildEnvOperationBase
     {
         [Required]

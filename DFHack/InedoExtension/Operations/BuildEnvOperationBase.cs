@@ -11,6 +11,8 @@ using Inedo.Web;
 
 namespace Inedo.Extensions.DFHack.Operations
 {
+    [ScriptNamespace("DFHack", PreferUnqualified = false)]
+    [Tag("DFHack")]
     public abstract class BuildEnvOperationBase : ExecuteOperation
     {
         public enum BuildOperatingSystem
@@ -50,6 +52,17 @@ namespace Inedo.Extensions.DFHack.Operations
 
             await info.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild, allowNetwork, forceASLR);
             this.LogDebug($"Full build-env command line: {info.FileName} {info.Arguments}");
+        }
+
+        protected string RemoveLogRubbish(ProcessDataReceivedEventArgs e)
+        {
+            var line = e.Data.TrimEnd();
+            if (this.ImageTag == "msvc" && line == @"wine: cannot find L""C:\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\mscorsvw.exe""")
+            {
+                return null;
+            }
+
+            return line;
         }
     }
 }

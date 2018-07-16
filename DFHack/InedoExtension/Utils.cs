@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -66,7 +67,7 @@ namespace Inedo.Extensions.DFHack
             return fileOps.CombinePath(baseDir, $"_E{context.ExecutionId}", "_D0");
         }
 
-        public static async Task WrapInBuildEnvAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context, string imageName, bool shareCache, bool allowNetwork = true, bool forceASLR = true, params string[] additionalPaths)
+        public static async Task WrapInBuildEnvAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context, string imageName, bool shareCache, bool allowNetwork = false, bool forceASLR = true, params string[] additionalPaths)
         {
             var fileOps = await context.Agent.GetServiceAsync<IFileOperationsExecuter>();
             var executionBaseDir = await context.GetExecutionBaseDirAsync();
@@ -96,7 +97,12 @@ namespace Inedo.Extensions.DFHack
                 security = "--security-opt seccomp=" + seccompPath.EscapeLinuxArg();
             }
 
-            info.Arguments = $"run --rm -e CCACHE_BASEDIR={executionBaseDir.EscapeLinuxArg()} {volumes} {network} {security} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"$HOME/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
+            var env = string.Join(" ", info.EnvironmentVariables
+                .Concat(new[] { new KeyValuePair<string, string>("CCACHE_BASEDIR", executionBaseDir) })
+                .Select(kv => $"-e {kv.Key.EscapeLinuxArg()}={kv.Value.EscapeLinuxArg()}"));
+            info.EnvironmentVariables.Clear();
+
+            info.Arguments = $"run --rm {env} {volumes} {network} {security} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"$HOME/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
             info.FileName = "/usr/bin/docker";
         }
     }
