@@ -61,6 +61,10 @@ namespace Inedo.Extensions.DFHack.Operations
             {
                 return null;
             }
+            if (this.ImageTag == "msvc" && line.StartsWith("cl : Command line warning D9025 : overriding '/O"))
+            {
+                return null;
+            }
 
             return line;
         }
