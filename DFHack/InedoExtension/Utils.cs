@@ -79,7 +79,7 @@ namespace Inedo.Extensions.DFHack
                 .Concat(new[]
                 {
                     "-v " + string.Format("{0}:{0}:ro", (await DFHackCacheVariableFunction.GetAsync(context))).EscapeLinuxArg(),
-                    shareCache ? "-v \"$HOME/.ccache:$HOME/.ccache\"" : $"-v \"$HOME/.ccache:$HOME/.ccache:ro\" -e CCACHE_READONLY=1 -e CCACHE_TEMPDIR=\"$HOME/.ccache_temp\" -v {fileOps.CombinePath(executionBaseDir, ".ccache").EscapeLinuxArg()}\":$HOME/.ccache_temp\""
+                    shareCache ? "-v \"/home/buildmaster/.ccache:/home/buildmaster/.ccache\"" : $"-v \"/home/buildmaster/.ccache:/home/buildmaster/.ccache:ro\" -e CCACHE_READONLY=1 -e CCACHE_TEMPDIR=\"/home/buildmaster/.ccache_temp\" -v {fileOps.CombinePath(executionBaseDir, ".ccache").EscapeLinuxArg()}\":/home/buildmaster/.ccache_temp\""
                 })
             );
 
@@ -102,7 +102,7 @@ namespace Inedo.Extensions.DFHack
                 .Select(kv => $"-e {kv.Key.EscapeLinuxArg()}={kv.Value.EscapeLinuxArg()}"));
             info.EnvironmentVariables.Clear();
 
-            info.Arguments = $"run --rm {env} {volumes} {network} {security} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"$HOME/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
+            info.Arguments = $"run --rm {env} {volumes} {network} {security} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"/home/buildmaster/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
             info.FileName = "/usr/bin/docker";
         }
     }
