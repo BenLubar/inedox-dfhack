@@ -14,6 +14,7 @@ namespace Inedo.Extensions.DFHack.Operations
     [DisplayName("[DFHack] Configure with CMake")]
     [Description("Prepares a build of DFHack to be used with the DFHack::Make operation.")]
     [ScriptAlias("Configure")]
+    [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class ConfigureOperation : BuildEnvOperationBase
     {
         public enum BuildTypeName

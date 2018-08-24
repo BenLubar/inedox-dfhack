@@ -14,6 +14,7 @@ namespace Inedo.Extensions.DFHack.Operations
     [DisplayName("[DFHack] Run Make")]
     [Description("Equivalent to running the \"make\" command, but with better progress reporting.")]
     [ScriptAlias("Make")]
+    [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class MakeOperation : BuildEnvOperationBase
     {
         [DisplayName("Target")]

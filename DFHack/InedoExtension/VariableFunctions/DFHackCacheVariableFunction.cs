@@ -8,6 +8,7 @@ namespace Inedo.Extensions.DFHack.VariableFunctions
 {
     [ScriptAlias(Name)]
     [ExtensionConfigurationVariable(Required = true)]
+    [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class DFHackCacheVariableFunction : ScalarVariableFunction
     {
         private const string Name = "DFHackCache";

@@ -5,6 +5,7 @@ using Inedo.Web;
 
 namespace Inedo.Extensions.DFHack.SuggestionProviders
 {
+    [AppliesTo(InedoProduct.BuildMaster)]
     public sealed class BuildEnvImageSuggestionProvider : ISuggestionProvider
     {
         public Task<IEnumerable<string>> GetSuggestionsAsync(IComponentConfiguration config)

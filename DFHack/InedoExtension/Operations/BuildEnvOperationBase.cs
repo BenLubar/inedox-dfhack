@@ -11,8 +11,9 @@ using Inedo.Web;
 
 namespace Inedo.Extensions.DFHack.Operations
 {
-    [ScriptNamespace("DFHack", PreferUnqualified = false)]
-    [Tag("DFHack")]
+    [ScriptNamespace("DFHack")]
+    [Tag("dfhack")]
+    [AppliesTo(InedoProduct.BuildMaster)]
     public abstract class BuildEnvOperationBase : ExecuteOperation
     {
         public enum BuildOperatingSystem
