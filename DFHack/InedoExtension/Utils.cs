@@ -63,8 +63,8 @@ namespace Inedo.Extensions.DFHack
             var fileOps = await context.Agent.GetServiceAsync<IFileOperationsExecuter>();
             var baseDir = await fileOps.GetBaseWorkingDirectoryAsync();
 
-            // XXX: assumes standardized execution directory layout and no deployables
-            return fileOps.CombinePath(baseDir, $"_E{context.ExecutionId}", "_D0");
+            // XXX: assumes standardized execution directory layout
+            return fileOps.CombinePath(baseDir, $"_E{context.ExecutionId}");
         }
 
         public static async Task WrapInBuildEnvAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context, string imageName, bool shareCache, bool allowNetwork = false, bool forceASLR = true, params string[] additionalPaths)
