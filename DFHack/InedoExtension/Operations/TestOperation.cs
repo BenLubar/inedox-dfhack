@@ -68,7 +68,7 @@ namespace Inedo.Extensions.DFHack.Operations
                         }
                     }
 
-                    if (text.StartsWith("Plugin ") && text.Contains(" is missing required globals: "))
+                    if (false && text.StartsWith("Plugin ") && text.Contains(" is missing required globals: "))
                     {
                         this.LogWarning(text);
                         return;
@@ -97,7 +97,7 @@ namespace Inedo.Extensions.DFHack.Operations
                     {
                         var testName = text.Substring("test passed: ".Length);
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, text, ref lastTime);
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Passed, text, ref lastTime);
                     }
 
                     this.LogInformation(text);
