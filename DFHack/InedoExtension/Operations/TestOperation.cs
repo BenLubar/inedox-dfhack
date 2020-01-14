@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Inedo.Agents;
@@ -49,6 +50,7 @@ namespace Inedo.Extensions.DFHack.Operations
 
             await this.LogAndWrapCommandAsync(context, testStartInfo, false, false);
 
+            var testLines = new List<string>();
             var recorder = await context.TryGetServiceAsync<IUnitTestRecorder>();
             Task recorderTask = InedoLib.NullTask;
 
@@ -74,8 +76,11 @@ namespace Inedo.Extensions.DFHack.Operations
                         return;
                     }
 
+                    testLines.Add(text);
+
                     if (text == "Running tests")
                     {
+                        testLines.Clear();
                         lastTime = DateTimeOffset.Now;
                     }
 
@@ -90,6 +95,7 @@ namespace Inedo.Extensions.DFHack.Operations
                         {
                             currentFile = currentFile.Substring(0, currentFile.Length - ".lua".Length);
                         }
+                        testLines.Clear();
                         lastTime = DateTimeOffset.Now;
                     }
 
@@ -97,7 +103,7 @@ namespace Inedo.Extensions.DFHack.Operations
                     {
                         var testName = text.Substring("test passed: ".Length);
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Passed, text, ref lastTime);
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Passed, ref lastTime);
                     }
 
                     this.LogInformation(text);
@@ -115,23 +121,25 @@ namespace Inedo.Extensions.DFHack.Operations
                         }
                     }
 
+                    testLines.Add(text);
+
                     if (text.StartsWith("Error when running file: "))
                     {
-                        recordUnitTest(currentFile, "(load file)", UnitTestStatus.Failed, text, ref lastTime);
+                        recordUnitTest(currentFile, "(load file)", UnitTestStatus.Failed, ref lastTime);
                     }
 
                     if (text.StartsWith("test failed: "))
                     {
                         var testName = text.Substring("test failed: ".Length);
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, text, ref lastTime);
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, ref lastTime);
                     }
 
                     if (text.StartsWith("test errored: "))
                     {
                         var testName = text.Substring("test failed: ".Length).Split(new[] { ':' }, 2)[0];
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, text, ref lastTime);
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, ref lastTime);
                     }
 
                     this.LogWarning(text);
@@ -146,12 +154,17 @@ namespace Inedo.Extensions.DFHack.Operations
                     this.LogError("Tests failed!");
                 }
 
-                void recordUnitTest(string groupName, string testName, UnitTestStatus testStatus, string testResult, ref DateTimeOffset now)
+                void recordUnitTest(string groupName, string testName, UnitTestStatus testStatus, ref DateTimeOffset now)
                 {
+                    var testResult = string.Join("\n", testLines);
+                    testLines.Clear();
+
                     var prevRecorderTask = recorderTask;
+
                     var endTime = DateTimeOffset.Now;
                     var startTime = now;
                     now = endTime;
+
                     recorderTask = Task.Run(async () =>
                     {
                         await prevRecorderTask;
