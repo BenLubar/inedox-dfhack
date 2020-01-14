@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Inedo.Agents;
 using Inedo.Diagnostics;
@@ -48,8 +49,13 @@ namespace Inedo.Extensions.DFHack.Operations
 
             await this.LogAndWrapCommandAsync(context, testStartInfo, false, false);
 
+            var recorder = await context.TryGetServiceAsync<IUnitTestRecorder>();
+            Task recorderTask = InedoLib.NullTask;
+
             using (var test = execOps.CreateProcess(testStartInfo))
             {
+                var lastTime = DateTimeOffset.Now;
+                string currentFile = null;
                 test.OutputDataReceived += (s, e) =>
                 {
                     string text = e.Data;
@@ -60,6 +66,38 @@ namespace Inedo.Extensions.DFHack.Operations
                         {
                             return;
                         }
+                    }
+
+                    if (text.StartsWith("Plugin ") && text.Contains(" is missing required globals: "))
+                    {
+                        this.LogWarning(text);
+                        return;
+                    }
+
+                    if (text == "Running tests")
+                    {
+                        lastTime = DateTimeOffset.Now;
+                    }
+
+                    if (text.StartsWith("Running file: "))
+                    {
+                        currentFile = text.Substring("Running file: ".Length);
+                        if (currentFile.StartsWith("test/"))
+                        {
+                            currentFile = currentFile.Substring("test/".Length);
+                        }
+                        if (currentFile.EndsWith(".lua"))
+                        {
+                            currentFile = currentFile.Substring(0, currentFile.Length - ".lua".Length);
+                        }
+                        lastTime = DateTimeOffset.Now;
+                    }
+
+                    if (text.StartsWith("test passed: "))
+                    {
+                        var testName = text.Substring("test passed: ".Length);
+
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, text, ref lastTime);
                     }
 
                     this.LogInformation(text);
@@ -77,15 +115,48 @@ namespace Inedo.Extensions.DFHack.Operations
                         }
                     }
 
+                    if (text.StartsWith("Error when running file: "))
+                    {
+                        recordUnitTest(currentFile, "(load file)", UnitTestStatus.Failed, text, ref lastTime);
+                    }
+
+                    if (text.StartsWith("test failed: "))
+                    {
+                        var testName = text.Substring("test failed: ".Length);
+
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, text, ref lastTime);
+                    }
+
+                    if (text.StartsWith("test errored: "))
+                    {
+                        var testName = text.Substring("test failed: ".Length).Split(new[] { ':' }, 2)[0];
+
+                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, text, ref lastTime);
+                    }
+
                     this.LogWarning(text);
                 };
 
                 test.Start();
                 await test.WaitAsync(context.CancellationToken);
+                await recorderTask;
 
                 if (test.ExitCode != 0)
                 {
                     this.LogError("Tests failed!");
+                }
+
+                void recordUnitTest(string groupName, string testName, UnitTestStatus testStatus, string testResult, ref DateTimeOffset now)
+                {
+                    var prevRecorderTask = recorderTask;
+                    var endTime = DateTimeOffset.Now;
+                    var startTime = now;
+                    now = endTime;
+                    recorderTask = Task.Run(async () =>
+                    {
+                        await prevRecorderTask;
+                        await recorder.RecordUnitTestAsync(groupName, testName, testStatus, testResult, startTime, endTime);
+                    });
                 }
             }
         }
