@@ -64,12 +64,6 @@ namespace Inedo.Extensions.DFHack.Operations
                         }
                     }
 
-                    if (false && text.StartsWith("Plugin ") && text.Contains(" is missing required globals: "))
-                    {
-                        this.LogWarning(text);
-                        return;
-                    }
-
                     testLines.Add(text);
 
                     if (text == "Running tests")
@@ -116,6 +110,12 @@ namespace Inedo.Extensions.DFHack.Operations
                     }
 
                     testLines.Add(text);
+
+                    if (text.StartsWith("Plugin ") && text.Contains(" is missing required globals: "))
+                    {
+                        this.LogWarning(text);
+                        return;
+                    }
 
                     if (text.StartsWith("Error when running file: "))
                     {
