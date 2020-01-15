@@ -26,12 +26,6 @@ namespace Inedo.Extensions.DFHack.Operations
         [ScriptAlias("Architecture")]
         public BuildArchitecture Architecture { get; set; }
 
-        [Required]
-        [DisplayName("DFHack command")]
-        [ScriptAlias("Command")]
-        [PlaceholderText("eg. test/main")]
-        public string Command { get; set; }
-
         public override async Task ExecuteAsync(IOperationExecutionContext context)
         {
             var execOps = await context.Agent.GetServiceAsync<IRemoteProcessExecuter>();
@@ -44,7 +38,7 @@ namespace Inedo.Extensions.DFHack.Operations
             var testStartInfo = new RemoteProcessStartInfo
             {
                 FileName = "dfhack-test",
-                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} {this.Command.EscapeLinuxArg()}",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} 'test/main die'",
                 WorkingDirectory = context.WorkingDirectory
             };
 
@@ -142,7 +136,7 @@ namespace Inedo.Extensions.DFHack.Operations
                         recordUnitTest(currentFile, testName, UnitTestStatus.Failed, ref lastTime);
                     }
 
-                    this.LogWarning(text);
+                    this.LogError(text);
                 };
 
                 test.Start();
@@ -177,8 +171,9 @@ namespace Inedo.Extensions.DFHack.Operations
         protected override ExtendedRichDescription GetDescription(IOperationConfiguration config)
         {
             return new ExtendedRichDescription(
-                new RichDescription("Run DFHack test suite using ", new Hilite(AH.CoalesceString(config[nameof(Command)], "unknown command"))),
-                new RichDescription("for ", new Hilite(AH.CoalesceString(config[nameof(OperatingSystem)], "unknown argument")), " (", new Hilite(AH.CoalesceString(config[nameof(Architecture)], "unknown architecture")), ")")
+                new RichDescription("Run DFHack test suite"),
+                new RichDescription("for ", new Hilite(AH.CoalesceString(config[nameof(OperatingSystem)], "unknown operating system")),
+                    " (", new Hilite(AH.CoalesceString(config[nameof(Architecture)], "unknown architecture")), ")")
             );
         }
     }
