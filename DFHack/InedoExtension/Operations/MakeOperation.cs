@@ -182,7 +182,7 @@ namespace Inedo.Extensions.DFHack.Operations
 
             var slash = line.IndexOf('/');
             var close = line.IndexOf(']');
-            if (line[0] == '[' && slash != -1 && slash < close)
+            if (slash != -1 && slash < close && line[0] == '[')
             {
                 var num = AH.ParseInt(line.Substring(1, slash - 1));
                 var den = AH.ParseInt(line.Substring(slash + 1, close - slash - 1));
