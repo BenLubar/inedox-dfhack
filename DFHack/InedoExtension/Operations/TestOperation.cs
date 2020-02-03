@@ -87,6 +87,12 @@ namespace Inedo.Extensions.DFHack.Operations
                         lastTime = DateTimeOffset.Now;
                     }
 
+                    if (text.StartsWith("warning: "))
+                    {
+                        this.LogWarning(text);
+                        return;
+                    }
+
                     if (text.StartsWith("test passed: "))
                     {
                         var testName = text.Substring("test passed: ".Length);
@@ -131,7 +137,7 @@ namespace Inedo.Extensions.DFHack.Operations
 
                     if (text.StartsWith("test errored: "))
                     {
-                        var testName = text.Substring("test failed: ".Length).Split(new[] { ':' }, 2)[0];
+                        var testName = text.Substring("test errored: ".Length).Split(new[] { ':' }, 2)[0];
 
                         recordUnitTest(currentFile, testName, UnitTestStatus.Failed, ref lastTime);
                     }
