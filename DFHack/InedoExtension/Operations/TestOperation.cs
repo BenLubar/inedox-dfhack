@@ -38,7 +38,7 @@ namespace Inedo.Extensions.DFHack.Operations
             var testStartInfo = new RemoteProcessStartInfo
             {
                 FileName = "dfhack-test",
-                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits} 'test/main die'",
+                Arguments = $"{this.OperatingSystem.ToString().ToLowerInvariant()} {bits}",
                 WorkingDirectory = context.WorkingDirectory
             };
 
@@ -87,7 +87,7 @@ namespace Inedo.Extensions.DFHack.Operations
                         lastTime = DateTimeOffset.Now;
                     }
 
-                    if (text.StartsWith("warning: "))
+                    if (text.StartsWith("warning: ") || text.StartsWith("WARN: "))
                     {
                         this.LogWarning(text);
                         return;
