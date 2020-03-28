@@ -51,7 +51,6 @@ namespace Inedo.Extensions.DFHack.Operations
             using (var test = execOps.CreateProcess(testStartInfo))
             {
                 var lastTime = DateTimeOffset.Now;
-                string currentFile = null;
                 test.OutputDataReceived += (s, e) =>
                 {
                     string text = e.Data;
@@ -66,23 +65,8 @@ namespace Inedo.Extensions.DFHack.Operations
 
                     testLines.Add(text);
 
-                    if (text == "Running tests")
+                    if (text.StartsWith("Running ") && text.EndsWith(" tests"))
                     {
-                        testLines.Clear();
-                        lastTime = DateTimeOffset.Now;
-                    }
-
-                    if (text.StartsWith("Running file: "))
-                    {
-                        currentFile = text.Substring("Running file: ".Length);
-                        if (currentFile.StartsWith("test/"))
-                        {
-                            currentFile = currentFile.Substring("test/".Length);
-                        }
-                        if (currentFile.EndsWith(".lua"))
-                        {
-                            currentFile = currentFile.Substring(0, currentFile.Length - ".lua".Length);
-                        }
                         testLines.Clear();
                         lastTime = DateTimeOffset.Now;
                     }
@@ -97,7 +81,7 @@ namespace Inedo.Extensions.DFHack.Operations
                     {
                         var testName = text.Substring("test passed: ".Length);
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Passed, ref lastTime);
+                        recordUnitTest(testName, UnitTestStatus.Passed, ref lastTime);
                     }
 
                     this.LogInformation(text);
@@ -123,23 +107,18 @@ namespace Inedo.Extensions.DFHack.Operations
                         return;
                     }
 
-                    if (text.StartsWith("Error when running file: "))
-                    {
-                        recordUnitTest(currentFile, "(load file)", UnitTestStatus.Failed, ref lastTime);
-                    }
-
                     if (text.StartsWith("test failed: "))
                     {
                         var testName = text.Substring("test failed: ".Length);
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, ref lastTime);
+                        recordUnitTest(testName, UnitTestStatus.Failed, ref lastTime);
                     }
 
                     if (text.StartsWith("test errored: "))
                     {
                         var testName = text.Substring("test errored: ".Length).Split(new[] { ':' }, 2)[0];
 
-                        recordUnitTest(currentFile, testName, UnitTestStatus.Failed, ref lastTime);
+                        recordUnitTest(testName, UnitTestStatus.Failed, ref lastTime);
                     }
 
                     this.LogError(text);
@@ -154,8 +133,11 @@ namespace Inedo.Extensions.DFHack.Operations
                     this.LogError("Tests failed!");
                 }
 
-                void recordUnitTest(string groupName, string testName, UnitTestStatus testStatus, ref DateTimeOffset now)
+                void recordUnitTest(string testName, UnitTestStatus testStatus, ref DateTimeOffset now)
                 {
+                    var splitName = testName.Split(new[] { ':' }, 2);
+                    var groupName = splitName[0];
+                    testName = splitName[1];
                     var testResult = string.Join("\n", testLines);
                     testLines.Clear();
 
