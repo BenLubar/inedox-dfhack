@@ -71,6 +71,12 @@ namespace Inedo.Extensions.DFHack.Operations
                         lastTime = DateTimeOffset.Now;
                     }
 
+                    if (text.StartsWith("ERROR: "))
+                    {
+                        this.LogError(text);
+                        return;
+                    }
+
                     if (text.StartsWith("warning: ") || text.StartsWith("WARN: "))
                     {
                         this.LogWarning(text);
