@@ -73,13 +73,19 @@ namespace Inedo.Extensions.DFHack.Operations
 
                     if (text.StartsWith("ERROR: "))
                     {
-                        this.LogError(text);
+                        this.LogError(text.Substring("ERROR: ").Length);
                         return;
                     }
 
-                    if (text.StartsWith("warning: ") || text.StartsWith("WARN: "))
+                    if (text.StartsWith("WARN: "))
                     {
-                        this.LogWarning(text);
+                        this.LogWarning(text.Substring("WARN: ").Length);
+                        return;
+                    }
+
+                    if (text.StartsWith("warning: "))
+                    {
+                        this.LogWarning(text.Substring("warning: ").Length);
                         return;
                     }
 
