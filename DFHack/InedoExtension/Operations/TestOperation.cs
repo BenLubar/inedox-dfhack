@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Inedo.Agents;
 using Inedo.Diagnostics;
@@ -128,7 +129,7 @@ namespace Inedo.Extensions.DFHack.Operations
 
                     if (text.StartsWith("test errored: "))
                     {
-                        var testName = text.Substring("test errored: ".Length).Split(new[] { ':' }, 2)[0];
+                        var testName = string.Join(":", text.Substring("test errored: ".Length).Split(new[] { ':' }, 3).Take(2));
 
                         recordUnitTest(testName, UnitTestStatus.Failed, ref lastTime);
                     }
@@ -149,7 +150,8 @@ namespace Inedo.Extensions.DFHack.Operations
                 {
                     var splitName = testName.Split(new[] { ':' }, 2);
                     var groupName = splitName[0];
-                    testName = splitName[1];
+                    if (splitName.Length > 1)
+                        testName = splitName[1];
                     var testResult = string.Join("\n", testLines);
                     testLines.Clear();
 
