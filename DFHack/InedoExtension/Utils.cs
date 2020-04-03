@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -67,7 +68,7 @@ namespace Inedo.Extensions.DFHack
             return fileOps.CombinePath(baseDir, $"_E{context.ExecutionId}");
         }
 
-        public static async Task WrapInBuildEnvAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context, string imageName, bool shareCache, bool allowNetwork = false, bool forceASLR = true, params string[] additionalPaths)
+        public static async Task<string> WrapInBuildEnvAsync(this RemoteProcessStartInfo info, IOperationExecutionContext context, string imageName, bool shareCache, bool allowNetwork = false, bool forceASLR = true, params string[] additionalPaths)
         {
             var fileOps = await context.Agent.GetServiceAsync<IFileOperationsExecuter>();
             var executionBaseDir = await context.GetExecutionBaseDirAsync();
@@ -87,7 +88,7 @@ namespace Inedo.Extensions.DFHack
             var security = string.Empty;
             if (!forceASLR)
             {
-                // Store seccomp.json outside of the deployable root so the image cannot modify it.
+                // Store seccomp.json outside of the execution directory root so the image cannot modify it.
                 var seccompPath = fileOps.CombinePath(executionBaseDir, "..", "docker-seccomp.json");
                 using (var output = await fileOps.OpenFileAsync(seccompPath, FileMode.Create, FileAccess.Write))
                 using (var input = typeof(Utils).Assembly.GetManifestResourceStream("Inedo.Extensions.DFHack.docker-seccomp.json"))
@@ -102,8 +103,12 @@ namespace Inedo.Extensions.DFHack
                 .Select(kv => $"-e {kv.Key.EscapeLinuxArg()}={kv.Value.EscapeLinuxArg()}"));
             info.EnvironmentVariables.Clear();
 
-            info.Arguments = $"run --rm {env} {volumes} {network} {security} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"/home/buildmaster/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
+            var cidfile = fileOps.CombinePath(executionBaseDir, "cid-" + Guid.NewGuid().ToString("N"));
+
+            info.Arguments = $"run --rm {env} {volumes} {network} {security} --cidfile {cidfile.EscapeLinuxArg()} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"/home/buildmaster/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
             info.FileName = "/usr/bin/docker";
+
+            return cidfile;
         }
     }
 }

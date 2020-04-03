@@ -103,7 +103,7 @@ namespace Inedo.Extensions.DFHack.Operations
                 cmakeStartInfo.EnvironmentVariables["DFHACK_USE_NINJA"] = "1";
             }
 
-            await cmakeStartInfo.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild);
+            var cidfile = await cmakeStartInfo.WrapInBuildEnvAsync(context, this.BuildEnv + ":" + this.ImageTag, this.TrustedBuild);
 
             this.LogDebug($"Running in directory: {cmakeStartInfo.WorkingDirectory}");
             this.LogDebug($"Executing command: {cmakeStartInfo.FileName} {cmakeStartInfo.Arguments}");
@@ -151,7 +151,10 @@ namespace Inedo.Extensions.DFHack.Operations
                 };
 
                 cmake.Start();
-                await cmake.WaitAsync(context.CancellationToken);
+                using (ManageContainerIDFile(context, cidfile))
+                {
+                    await cmake.WaitAsync(context.CancellationToken);
+                }
 
                 if (cmake.ExitCode == 0)
                 {

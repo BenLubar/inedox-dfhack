@@ -43,7 +43,7 @@ namespace Inedo.Extensions.DFHack.Operations
                 WorkingDirectory = context.WorkingDirectory
             };
 
-            await this.LogAndWrapCommandAsync(context, testStartInfo, false, false);
+            var cidfile = await this.LogAndWrapCommandAsync(context, testStartInfo, false, false);
 
             var testLines = new List<string>();
             var recorder = await context.TryGetServiceAsync<IUnitTestRecorder>();
@@ -138,7 +138,10 @@ namespace Inedo.Extensions.DFHack.Operations
                 };
 
                 test.Start();
-                await test.WaitAsync(context.CancellationToken);
+                using (ManageContainerIDFile(context, cidfile))
+                {
+                    await test.WaitAsync(context.CancellationToken);
+                }
                 await recorderTask;
 
                 if (test.ExitCode != 0)

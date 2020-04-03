@@ -49,7 +49,7 @@ namespace Inedo.Extensions.DFHack.Operations
                 makeStartInfo.EnvironmentVariables["DFHACK_USE_NINJA"] = "1";
             }
 
-            await this.LogAndWrapCommandAsync(context, makeStartInfo);
+            var cidfile = await this.LogAndWrapCommandAsync(context, makeStartInfo);
 
             using (var make = execOps.CreateProcess(makeStartInfo))
             {
@@ -59,7 +59,10 @@ namespace Inedo.Extensions.DFHack.Operations
                 make.ErrorDataReceived += this.ErrorDataReceived;
 
                 make.Start();
-                await make.WaitAsync(context.CancellationToken);
+                using (ManageContainerIDFile(context, cidfile))
+                {
+                    await make.WaitAsync(context.CancellationToken);
+                }
 
                 var processName = this.UseNinja ? "ninja" : "make";
 
