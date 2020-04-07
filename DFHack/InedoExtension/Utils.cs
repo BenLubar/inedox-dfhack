@@ -76,7 +76,7 @@ namespace Inedo.Extensions.DFHack
             var volumes = string.Join(" ",
                 new[] { executionBaseDir }.Concat(additionalPaths)
                 .Select(s => fileOps.CombinePath(info.WorkingDirectory, s))
-                .Select(s => "-v " + $"{s}:{s}".EscapeLinuxArg())
+                .Select(s => "-v " + $"{s}:{s.Replace($"_E{context.ExecutionId}", "_E0")}".EscapeLinuxArg())
                 .Concat(new[]
                 {
                     "-v " + string.Format("{0}:{0}:ro", (await DFHackCacheVariableFunction.GetAsync(context))).EscapeLinuxArg(),
@@ -105,7 +105,7 @@ namespace Inedo.Extensions.DFHack
 
             var cidfile = fileOps.CombinePath(executionBaseDir, "cid-" + Guid.NewGuid().ToString("N"));
 
-            info.Arguments = $"run --rm {env} {volumes} {network} {security} --cidfile {cidfile.EscapeLinuxArg()} -w {info.WorkingDirectory.EscapeLinuxArg()} -e CCACHE_DIR=\"/home/buildmaster/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
+            info.Arguments = $"run --rm {env} {volumes} {network} {security} --cidfile {cidfile.EscapeLinuxArg()} -w {info.WorkingDirectory.Replace($"_E{context.ExecutionId}", "_E0").EscapeLinuxArg()} -e CCACHE_DIR=\"/home/buildmaster/.ccache\" -u $(id -u):$(id -g) {imageName.EscapeLinuxArg()} {info.FileName.EscapeLinuxArg()} {info.Arguments}";
             info.FileName = "/usr/bin/docker";
 
             return cidfile;
