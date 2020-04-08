@@ -99,7 +99,7 @@ namespace Inedo.Extensions.DFHack
             }
 
             var env = string.Join(" ", info.EnvironmentVariables
-                .Concat(new[] { new KeyValuePair<string, string>("CCACHE_BASEDIR", executionBaseDir) })
+                .Concat(new[] { new KeyValuePair<string, string>("CCACHE_BASEDIR", executionBaseDir.Replace($"_E{context.ExecutionId}", "_E0")) })
                 .Select(kv => $"-e {kv.Key.EscapeLinuxArg()}={kv.Value.EscapeLinuxArg()}"));
             info.EnvironmentVariables.Clear();
 
